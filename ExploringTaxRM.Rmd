@@ -1,0 +1,188 @@
+---
+title: "ExploringTax"
+author: "MarielChaveste"
+date: "2024-06-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Explorando taxonomía con R
+
+## Instalar paquetes
+```{r instalar-paquetes, warning=FALSE}
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#  install.packages("BiocManager")
+
+#BiocManager::install("phyloseq") # Install phyloseq
+
+
+#install.packages(c("RColorBrewer", "patchwork")) 
+#install patchwork to chart publication-quality plots and readr to read rectangular datasets.
+#install.packages("dplyr")
+```
+
+## Cargar paquetes
+```{r llamar-paquetes, warning=FALSE}
+library(BiocManager)
+library("phyloseq")
+library(RColorBrewer)
+library(patchwork)
+library(dplyr)
+library(ggplot2)
+```
+
+## Fijar directorio de trabajo
+```{r, warning=FALSE}
+setwd("~/Camda2024Microbioma")
+```
+
+## Crear el objeto de phyloseq importando los datos
+```{r, warning=FALSE}
+merged_metagenomes <- import_biom("~/Camda2024Microbioma/taxonomy_reads/tax.biom")
+class(merged_metagenomes)
+View(merged_metagenomes@tax_table@.Data)
+```
+
+## Modificar archivo tax.biom
+```{r, warning=FALSE}
+merged_metagenomes@tax_table@.Data <- substring(merged_metagenomes@tax_table@.Data, 4)
+
+colnames(merged_metagenomes@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+```
+
+## Explorar phylum
+
+```{r, warning=FALSE}
+unique(merged_metagenomes@tax_table@.Data[,"Phylum"])
+sum(merged_metagenomes@tax_table@.Data[,"Phylum"] == "Firmicutes")
+View(merged_metagenomes@otu_table@.Data)
+```
+
+## Explorando datos con algunos ejemplos de niveles taxonómicos
+
+### Ejemplo 1.
+
+Phylum seleccionado "Chrysiogenetes"
+```{r, warning=FALSE}
+sum(merged_metagenomes@tax_table@.Data[,"Phylum"] == "Chrysiogenetes")
+unique(merged_metagenomes@tax_table@.Data[merged_metagenomes@tax_table@.Data[,"Phylum"] == "Chrysiogenetes", "Genus"])
+View(merged_metagenomes@otu_table@.Data)
+View(merged_metagenomes@tax_table@.Data)
+```
+
+### Ejemplo 2
+
+```{r, warning=FALSE}
+as.data.frame(merged_metagenomes@tax_table@.Data) %>%
+select("Species")
+sum(merged_metagenomes@tax_table@.Data[,"Phylum"] == "Chrysiogenetes")
+```
+
+## Graficar la alpha diversidad
+
+Para ello primero selecionamos únicamente las bacterias
+
+```{r, warning=FALSE}
+merged_metagenomes <- subset_taxa(merged_metagenomes, Kingdom == "Bacteria")
+View(merged_metagenomes)
+sample_sums(merged_metagenomes)
+summary(merged_metagenomes@otu_table@.Data)
+merged_metagenomes
+```
+
+## Grafica de alpha diversidad con las medidas Observed, Chao1 y Shannon
+
+```{r, warning=FALSE}
+plot_richness(physeq = merged_metagenomes, 
+              measures = c("Observed","Chao1","Shannon")) 
+```
+
+## Explorando otras opciones
+
+nrow es el número de filas en que aparecerán las gráficas
+
+```{r, warning=FALSE}
+plot_richness(physeq = merged_metagenomes,
+              title = "Medidas de alpha diversidad", nrow  = 2, measures = c("Observed","Chao1","Shannon")) 
+```
+
+```{r, warning=FALSE}
+plot_richness(physeq = merged_metagenomes,
+              title = "Medidas de alpha diversidad", nrow  = 2, measures = c("Observed","Chao1","Shannon"), sortby = "Shannon") 
+```
+
+```{r, warning=FALSE}
+summary(merged_metagenomes@tax_table@.Data== "")
+```
+
+```{r, warning=FALSE}
+merged_metagenomes <- subset_taxa(merged_metagenomes, Genus != "")
+merged_metagenomes
+```
+
+```{r, warning=FALSE}
+head(merged_metagenomes@otu_table@.Data)
+```
+
+```{r, warning=FALSE}
+percentages <- transform_sample_counts(merged_metagenomes, function(x) x*100 / sum(x) )
+class(percentages)
+head(percentages@otu_table@.Data)
+```
+
+```{r, warning=FALSE}
+distanceMethodList
+```
+
+## Beta diversidad
+
+```{r, warning=FALSE}
+meta_ord <- ordinate(physeq = percentages, method = "NMDS", distance = "bray")
+plot_ordination(physeq = percentages, ordination = meta_ord)
+```
+
+```{r, warning=FALSE}
+percentages_glom <- tax_glom(percentages, taxrank = 'Phylum')
+
+View(percentages_glom@tax_table@.Data)
+```
+
+```{r, warning=FALSE}
+percentages_df <- psmelt(percentages_glom)
+str(percentages_df)
+```
+
+```{r, warning=FALSE}
+absolute_glom <- tax_glom(physeq = merged_metagenomes, taxrank = "Phylum")
+absolute_df <- psmelt(absolute_glom)
+str(absolute_df)
+```
+
+```{r, warning=FALSE}
+absolute_df$Phylum <- as.factor(absolute_df$Phylum)
+phylum_colors_abs<-colorRampPalette(brewer.pal(8,"Dark2")) (length(levels(absolute_df$Phylum)))
+```
+
+```{r, warning=FALSE}
+absolute_plot <- ggplot(data= absolute_df, aes(x=Sample, y=Abundance, fill=Phylum))+ 
+    geom_bar(aes(), stat="identity", position="stack")+
+    scale_fill_manual(values = phylum_colors_abs)
+plot(absolute_plot)
+```
+
+```{r, warning=FALSE}
+percentages_df$Phylum <- as.factor(percentages_df$Phylum)
+phylum_colors_rel<- colorRampPalette(brewer.pal(8,"Dark2")) (length(levels(percentages_df$Phylum)))
+relative_plot <- ggplot(data=percentages_df, aes(x=Sample, y=Abundance, fill=Phylum))+ 
+    geom_bar(aes(), stat="identity", position="stack")+
+    scale_fill_manual(values = phylum_colors_rel)
+absolute_plot | relative_plot
+```
+
+```{r, warning=FALSE}
+percentages_df$Phylum <- as.character(percentages_df$Phylum) # Return the Phylum column to be of type character
+percentages_df$Phylum[percentages_df$Abundance < 0.5] <- "Phyla < 0.5% abund."
+unique(percentages_df$Phylum)
+```
