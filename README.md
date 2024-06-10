@@ -1,23 +1,3 @@
----
-title: "Reporte final"
-author: "Mariel Chaveste"
-date: "2024-06-04"
-output: html_document
-editor_options: 
-  markdown: 
-    wrap: sentence
----
-
-```{=html}
-<style> 
-body {text-align: justify;} 
-</style>
-```
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-#install.packages("knitr", dependencies = TRUE)
-```
-
 # Abstract
 
 Reporte de aplicación de la metodología adquirida en el curso de Bioinformática a la etapa de preprocesamiento de datos provenientes del reto de índice de salud basado en el microbioma intestinal de la Evaluación crítica de análisis de datos masivos o CAMDA por sus siglas en inglés.
@@ -255,7 +235,7 @@ unique(merged_metagenomes@tax_table@.Data[merged_metagenomes@tax_table@.Data[,"P
 
 ### Graficar la alpha diversidad
 
-Para ello primero selecionamos únicamente las bacterias
+Para ello primero seleccionamos únicamente las bacterias
 
 ```{r, warning=FALSE, include=FALSE}
 merged_metagenomes <- subset_taxa(merged_metagenomes, Kingdom == "Bacteria")
